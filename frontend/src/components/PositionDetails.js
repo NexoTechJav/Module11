@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { Container, Row, Offcanvas, Button } from 'react-bootstrap';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Container, Row, Button } from 'react-bootstrap';
 import { DragDropContext } from 'react-beautiful-dnd';
 import StageColumn from './StageColumn';
 import CandidateDetails from './CandidateDetails';
-import { useNavigate } from 'react-router-dom';
 
 const PositionsDetails = () => {
     const { id } = useParams();
@@ -18,11 +17,13 @@ const PositionsDetails = () => {
             try {
                 const response = await fetch(`http://localhost:3010/positions/${id}/interviewFlow`);
                 const data = await response.json();
+
                 const interviewSteps = data.interviewFlow.interviewFlow.interviewSteps.map(step => ({
                     title: step.name,
                     id: step.id,
                     candidates: []
                 }));
+
                 setStages(interviewSteps);
                 setPositionName(data.interviewFlow.positionName);
             } catch (error) {
@@ -30,10 +31,19 @@ const PositionsDetails = () => {
             }
         };
 
+        fetchInterviewFlow();
+    }, [id]);
+
+    useEffect(() => {
+        if (stages.length === 0) {
+            return;
+        }
+
         const fetchCandidates = async () => {
             try {
                 const response = await fetch(`http://localhost:3010/positions/${id}/candidates`);
                 const candidates = await response.json();
+
                 setStages(prevStages =>
                     prevStages.map(stage => ({
                         ...stage,
@@ -52,9 +62,8 @@ const PositionsDetails = () => {
             }
         };
 
-        fetchInterviewFlow();
         fetchCandidates();
-    }, [id]);
+    }, [id, stages.length]);
 
     const updateCandidateStep = async (candidateId, applicationId, newStep) => {
         try {
@@ -84,17 +93,24 @@ const PositionsDetails = () => {
             return;
         }
 
-        const sourceStage = stages[source.droppableId];
-        const destStage = stages[destination.droppableId];
+        if (source.droppableId === destination.droppableId && source.index === destination.index) {
+            return;
+        }
 
-        const [movedCandidate] = sourceStage.candidates.splice(source.index, 1);
-        destStage.candidates.splice(destination.index, 0, movedCandidate);
+        const sourceStageIndex = Number(source.droppableId);
+        const destinationStageIndex = Number(destination.droppableId);
+        const nextStages = stages.map(stage => ({
+            ...stage,
+            candidates: [...stage.candidates]
+        }));
 
-        setStages([...stages]);
+        const [movedCandidate] = nextStages[sourceStageIndex].candidates.splice(source.index, 1);
+        nextStages[destinationStageIndex].candidates.splice(destination.index, 0, movedCandidate);
 
-        const destStageId = stages[destination.droppableId].id;
+        setStages(nextStages);
 
-        updateCandidateStep(movedCandidate.id, movedCandidate.applicationId, destStageId);
+        const destinationStageId = nextStages[destinationStageIndex].id;
+        updateCandidateStep(movedCandidate.id, movedCandidate.applicationId, destinationStageId);
     };
 
     const handleCardClick = (candidate) => {
@@ -110,11 +126,11 @@ const PositionsDetails = () => {
             <Button variant="link" onClick={() => navigate('/positions')} className="mb-3">
                 Volver a Posiciones
             </Button>
-            <h2 className="text-center mb-4">{positionName}</h2>
+            <h2 className="text-center mb-4" data-testid="position-title">{positionName}</h2>
             <DragDropContext onDragEnd={onDragEnd}>
                 <Row>
                     {stages.map((stage, index) => (
-                        <StageColumn key={index} stage={stage} index={index} onCardClick={handleCardClick} />
+                        <StageColumn key={stage.id} stage={stage} index={index} onCardClick={handleCardClick} />
                     ))}
                 </Row>
             </DragDropContext>
@@ -124,4 +140,3 @@ const PositionsDetails = () => {
 };
 
 export default PositionsDetails;
-

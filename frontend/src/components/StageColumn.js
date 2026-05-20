@@ -4,12 +4,12 @@ import { Droppable } from 'react-beautiful-dnd';
 import CandidateCard from './CandidateCard';
 
 const StageColumn = ({ stage, index, onCardClick }) => (
-    <Col md={3}>
+    <Col md={3} data-testid={`stage-column-${stage.id}`}>
         <Droppable droppableId={`${index}`}>
             {(provided) => (
                 <Card className="mb-4" ref={provided.innerRef} {...provided.droppableProps}>
                     <Card.Header className="text-center">{stage.title}</Card.Header>
-                    <Card.Body>
+                    <Card.Body data-testid={`stage-candidates-${stage.id}`}>
                         {stage.candidates.map((candidate, idx) => (
                             <CandidateCard key={candidate.id} candidate={candidate} index={idx} onClick={onCardClick} />
                         ))}
